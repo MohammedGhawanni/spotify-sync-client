@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import Spotify from "spotify-web-api-js";
+import axios from 'axios';
 
 // Global Var for Spotify WebAPI library
 const spotify = new Spotify();
@@ -80,38 +81,32 @@ export class SpotifyController extends Component {
     }
   }
 
-  sync(){
-    let currentToken = spotify.getAccessToken();
-    let guestToken = this.getGuestToken(currentToken);
-
-    console.log('guest token:', guestToken);
-
-    const myPlaybackState = {};
-    spotify.getMyCurrentPlaybackState()
+  async sync(){
+    //save current state
+    const currentPlaybackState = {};
+    await spotify.getMyCurrentPlaybackState()
     .then((res) => {
-      myPlaybackState.track = res.item.uri;
-      myPlaybackState.position = res.progress_ms;
+      currentPlaybackState.track = res.item.uri;
+      currentPlaybackState.progrees = res.progress_ms;
     });
 
-    if(myPlaybackState){
-      spotify.setAccessToken(guestToken);
-      spotify.play({
-        uris: myPlaybackState.track,
-        position_ms: myPlaybackState.position
-      }).then((res) => {
-        console.log('should be synced, here is the response we got: ' , res);
-      });
-    }
-  }
-
-  getGuestToken(myToken){
-    let localStorageKeys = Object.keys(window.localStorage);
-    for(let i = 0 ; i < localStorageKeys.length ; i++){
-      if(window.localStorage.getItem(localStorageKeys[i] !== myToken)){
-        console.log('returning token:', window.localStorage.getItem(localStorageKeys[i]));
-        return window.localStorage.getItem(localStorageKeys[i]);
-      }
-    }
+    //Get all access token we have in our DB
+    axios.post(process.env.REACT_APP_API_GATEWAY_GET_ACCESS_TOKENS)
+    .then((tokens) => {
+      //iterate through all the tokens
+      console.log('all tokens', tokens)
+      for(var i = 0 ; i < tokens.data.Items.length ; i++) {
+        spotify.setAccessToken(tokens.data.Items[i].access_token);
+        console.log('playback state', currentPlaybackState);
+        spotify.play({
+          // context_uri: currentPlaybackState.context,
+          uris: [currentPlaybackState.track],
+          position_ms: currentPlaybackState.progrees
+        }).then((res) => {
+          console.log('synchronized device', res);
+        })
+      };
+    });
   }
 
   render() {

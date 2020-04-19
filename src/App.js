@@ -23,6 +23,11 @@ class App extends Component{
     while ( e = r.exec(q)) {
         hashParams[e[1]] = decodeURIComponent(e[2]);
     }
+    //here we want to send the access toke to DyanmoDB
+    axios.post(process.env.REACT_APP_API_GATEWAY_POST_ACCESS_TOKEN, {access_token: hashParams.access_token})
+    .then(() => {
+      console.log(`Access token ${hashParams.access_token} saved in DynamoDB`);
+    })
 
     return hashParams;
   }
